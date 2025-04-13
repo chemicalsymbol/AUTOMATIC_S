@@ -32,13 +32,13 @@ application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, start))
 # 정확한 POST 라우트 등록
 @app.route(f"/{BOT_TOKEN}", methods=["POST"])
 def webhook():
-    print("📥 Webhook 호출됨")
+    print(f"📥 Webhook 호출됨 at /{BOT_TOKEN}")
     try:
         update = Update.de_json(request.get_json(force=True), application.bot)
         asyncio.run(application.process_update(update))
         return "OK"
     except Exception as e:
-        print(f"❌ 처리 오류: {e}")
+        print(f"❌ 처리 중 오류: {e}")
         return "ERROR", 500
 
 # Webhook 등록
