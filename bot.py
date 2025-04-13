@@ -1,22 +1,20 @@
-import asyncio
-import json
-from playwright.async_api import async_playwright
-from datetime import datetime
-import requests
-from dotenv import load_dotenv
 import os
+import json
+import asyncio
+import requests
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
-import subprocess
-
-load_dotenv()
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from flask import Flask, request
 
 CONFIG_PATH = "user_config.json"
 BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
+WEBHOOK_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/{BOT_TOKEN}"  # Render에서 자동 제공
+
+app_flask = Flask(__name__)  # Flask 앱 for Webhook
 user_data = {}
 
 async def send_telegram(message, chat_id=None):
-    token = os.getenv("TELEGRAM_TOKEN")
+    token = BOT_TOKEN
     if not chat_id:
         chat_id = os.getenv("TELEGRAM_CHAT_ID")
     if token and chat_id:
@@ -60,12 +58,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def go(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🚄 예약을 시작합니다! 잠시만 기다려주세요...")
-    subprocess.Popen(["python", "final.py"])
+    import subprocess
+    subprocess.Popen(["python3", "final.py"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-if __name__ == "__main__":
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("go", go))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    print("🤖 Telegram 봇 실행 중...")
-    app.run_polling()
+# Flask에 요청 오면 Telegram dispatcher로 넘김
+@app_flask.post(f'/{BOT_TOKEN}')
+def webhook():
+    from telegram import Update
+    from telegram.ext import Application
+    application = ApplicationBuilder().token(BOT_TOKEN).build()
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("go", go))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    update = Update.de_json(request.get_json(force=True), application.bot)
+    application.update_queue.put_nowait(update)
+    return "OK"
+
+if __name__ == '__main__':
+    import threading
+
+    # Flask 서버 실행
+    threading.Thread(target=lambda: app_flask.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))).start()
+
+    # Telegram Webhook 등록
+    requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook?url={WEBHOOK_URL}")
+    print(f"✅ Webhook 연결됨: {WEBHOOK_URL}")
