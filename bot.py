@@ -2,14 +2,14 @@ import os
 import json
 import asyncio
 import requests
+from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder, CommandHandler,
     MessageHandler, ContextTypes, filters
 )
-from dotenv import load_dotenv
-load_dotenv()
 
+load_dotenv()
 BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
 HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
 WEBHOOK_URL = f"https://{HOSTNAME}/{BOT_TOKEN}"
@@ -21,15 +21,9 @@ application = ApplicationBuilder().token(BOT_TOKEN).build()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("🚀 /start 호출됨")
-    await update.message.reply_text("✅ 봇이 작동 중입니다!")
-
-async def go(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🚄 예약 시작!")
-    import subprocess
-    subprocess.Popen(["python3", "final.py"])
+    await update.message.reply_text("✅ 봇 작동 확인 완료!")
 
 application.add_handler(CommandHandler("start", start))
-application.add_handler(CommandHandler("go", go))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, start))
 
 def register_webhook():
