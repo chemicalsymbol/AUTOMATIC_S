@@ -79,6 +79,7 @@ application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_m
 
 # === Webhook 수신 ===
 @app_flask.post(f'/{BOT_TOKEN}')
+print(f"[DEBUG] 현재 BOT_TOKEN: {BOT_TOKEN}")
 def webhook():
     print("📥 Webhook 호출됨")
     try:
