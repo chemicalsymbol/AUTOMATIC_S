@@ -9,6 +9,9 @@ from telegram.ext import (
     ApplicationBuilder, CommandHandler,
     MessageHandler, ContextTypes, filters
 )
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # === 환경변수 ===
 BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
