@@ -36,6 +36,6 @@ if __name__ == "__main__":
     register_webhook()
     application.run_webhook(
         listen="0.0.0.0",
-        port=int(os.environ.get("PORT", 10000)),
-        webhook_url=WEBHOOK_URL,
+        port=int(os.environ.get("PORT")),  # 100% 이거여야 함
+        webhook_url=WEBHOOK_URL
     )
