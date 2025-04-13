@@ -72,7 +72,7 @@ application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_m
 @app_flask.post(f'/{BOT_TOKEN}')
 def webhook():
     update = Update.de_json(request.get_json(force=True), application.bot)
-    application.create_task(application.process_update(update))
+    asyncio.run(application.process_update(update))
     return "OK"
 
 # ✅ dispatcher를 별도 쓰레드에서 실행 (run_polling 대신)
