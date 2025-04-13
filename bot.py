@@ -1,8 +1,8 @@
 import os
 import json
+import asyncio
 import threading
 import requests
-import asyncio
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import (
@@ -10,18 +10,22 @@ from telegram.ext import (
     MessageHandler, ContextTypes, filters
 )
 
+# === 환경변수 ===
 BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CONFIG_PATH = "user_config.json"
-WEBHOOK_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/{BOT_TOKEN}"
+HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
+WEBHOOK_URL = f"https://{HOSTNAME}/{BOT_TOKEN}"
 
+# === Flask 앱 ===
 app_flask = Flask(__name__)
 user_data = {}
 
-# ✅ 전역 Telegram Application 객체
+# === Telegram Application ===
 application = ApplicationBuilder().token(BOT_TOKEN).build()
 
-# ✅ 핸들러 정의
+# === 핸들러 정의 ===
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("🚀 /start 호출됨")
     await update.message.reply_text(
         "안녕하세요! SRT 예약을 시작합니다.\n"
         "다음 정보를 줄바꿈 없이 한 줄에 입력해주세요:\n"
@@ -31,7 +35,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data[update.effective_chat.id] = {"step": "bulk"}
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("📨 메시지 수신:", update.message.text)
+    print("📨 사용자 메시지 수신:", update.message.text)
     chat_id = update.effective_chat.id
     text = update.message.text.strip()
     step = user_data.get(chat_id, {}).get("step")
@@ -56,37 +60,51 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(config, f, ensure_ascii=False, indent=2)
 
-        await update.message.reply_text("✅ 설정 완료! /go 를 입력하면 예약 시작합니다.")
+        await update.message.reply_text("✅ 설정 완료! /go 를 입력하면 예약을 시작합니다.")
         user_data[chat_id]["step"] = "done"
 
 async def go(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🚄 예약을 시작합니다!")
+    print("🚄 예약 실행 요청")
+    await update.message.reply_text("🚄 예약을 시작합니다! 잠시만 기다려주세요...")
     import subprocess
     subprocess.Popen(["python3", "final.py"])
 
-# ✅ 핸들러 등록
+# === 핸들러 등록 ===
 application.add_handler(CommandHandler("start", start))
 application.add_handler(CommandHandler("go", go))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-# ✅ Flask로 webhook 처리
+# === Webhook 수신 ===
 @app_flask.post(f'/{BOT_TOKEN}')
 def webhook():
-    update = Update.de_json(request.get_json(force=True), application.bot)
-    asyncio.run(application.process_update(update))
+    print("📥 Webhook 호출됨")
+    try:
+        update = Update.de_json(request.get_json(force=True), application.bot)
+        asyncio.run(application.process_update(update))
+        print("✅ Update 처리 완료")
+    except Exception as e:
+        print("❌ 처리 중 오류:", e)
     return "OK"
 
-# ✅ dispatcher를 별도 쓰레드에서 실행 (run_polling 대신)
-def run_app():
+# === Webhook 등록 및 실행 ===
+def run_bot_webhook():
+    # Webhook 등록
+    try:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook?url={WEBHOOK_URL}"
+        response = requests.get(url)
+        print("🌐 Webhook 등록 응답:", response.json())
+    except Exception as e:
+        print("❌ Webhook 등록 실패:", e)
+
+    # run_webhook (포트 바인딩은 자동 처리)
     application.run_webhook(
         listen="0.0.0.0",
         port=int(os.environ.get("PORT", 10000)),
-        webhook_url=WEBHOOK_URL,
+        webhook_url=WEBHOOK_URL
     )
 
+# === 메인 ===
 if __name__ == "__main__":
-    # Flask 서버는 따로 실행
+    print("🚀 bot.py 실행 시작")
     threading.Thread(target=lambda: app_flask.run(host="0.0.0.0", port=5000)).start()
-
-    # Telegram Application은 Webhook 모드로 실행
-    run_app()
+    run_bot_webhook()
