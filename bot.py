@@ -40,12 +40,13 @@ def webhook():
     print("📥 Webhook 호출됨")
     try:
         update = Update.de_json(request.get_json(force=True), application.bot)
+        print("📦 수신한 update 객체:", update)
         asyncio.run(application.process_update(update))
         return "OK"
     except Exception as e:
-        print(f"❌ 처리 중 오류: {e}")
+        print(f"❌ 처리 중 오류: {e.__class__.__name__}: {e}")
         return "ERROR", 500
-
+    
 # ✅ Telegram Webhook 등록 (Render 배포 시 1회 실행)
 def register_webhook():
     try:
