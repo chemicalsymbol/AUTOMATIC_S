@@ -36,7 +36,7 @@ async def run():
         TARGET_START_HOUR2 -= 1  # 짝수 기준 시간으로 맞춤
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
+        browser = await p.chromium.launch(headless=True)
         context = await browser.new_context()
         page = await context.new_page()
 
