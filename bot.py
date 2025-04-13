@@ -1,8 +1,8 @@
+from flask import Flask, request
 import os
-import json
 import asyncio
 import requests
-from flask import Flask, request
+import json
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder, CommandHandler,
@@ -11,7 +11,6 @@ from telegram.ext import (
 from dotenv import load_dotenv
 
 load_dotenv()
-
 BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
 HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
 WEBHOOK_URL = f"https://{HOSTNAME}/{BOT_TOKEN}"
@@ -19,39 +18,37 @@ WEBHOOK_URL = f"https://{HOSTNAME}/{BOT_TOKEN}"
 print(f"[DEBUG] BOT_TOKEN: {BOT_TOKEN}")
 print(f"[DEBUG] WEBHOOK_URL: {WEBHOOK_URL}")
 
-# Flask 서버
 app = Flask(__name__)
-
-# Telegram Application
 application = ApplicationBuilder().token(BOT_TOKEN).build()
 
-# 핸들러 등록
+# 핸들러
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("🚀 /start 호출됨")
-    await update.message.reply_text("✅ 봇 작동 확인!")
+    await update.message.reply_text("✅ 봇 작동 확인 완료!")
 
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, start))
 
-# Webhook 라우트
-@app.post(f"/{BOT_TOKEN}")
-def telegram_webhook():
+# 정확한 POST 라우트 등록
+@app.route(f"/{BOT_TOKEN}", methods=["POST"])
+def webhook():
     print("📥 Webhook 호출됨")
     try:
         update = Update.de_json(request.get_json(force=True), application.bot)
         asyncio.run(application.process_update(update))
         return "OK"
     except Exception as e:
-        print(f"❌ Webhook 처리 실패: {e}")
+        print(f"❌ 처리 오류: {e}")
         return "ERROR", 500
 
 # Webhook 등록
 def register_webhook():
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook?url={WEBHOOK_URL}"
-    res = requests.get(url)
+    res = requests.get(
+        f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook?url={WEBHOOK_URL}"
+    )
     print("🌐 Webhook 등록 응답:", res.json())
 
 if __name__ == "__main__":
     register_webhook()
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
