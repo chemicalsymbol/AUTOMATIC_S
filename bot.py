@@ -15,6 +15,7 @@ load_dotenv()
 
 # === 환경변수 ===
 BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
+print(f"[DEBUG] 현재 BOT_TOKEN: {BOT_TOKEN}")
 CONFIG_PATH = "user_config.json"
 HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
 WEBHOOK_URL = f"https://{HOSTNAME}/{BOT_TOKEN}"
@@ -79,7 +80,6 @@ application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_m
 
 # === Webhook 수신 ===
 @app_flask.post(f'/{BOT_TOKEN}')
-print(f"[DEBUG] 현재 BOT_TOKEN: {BOT_TOKEN}")
 def webhook():
     print("📥 Webhook 호출됨")
     try:
